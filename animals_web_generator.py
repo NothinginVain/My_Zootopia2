@@ -1,5 +1,5 @@
 import json
-from xml.etree.ElementTree import indent
+from data_fetcher import fetch_data
 
 
 def load_html_template(file_path):
@@ -7,12 +7,6 @@ def load_html_template(file_path):
     with open(file_path, "r", encoding="utf-8",) as file:
         content = file.read()
         return content
-
-
-def load_data(file_path):
-    """Load and return animal data from a JSON file."""
-    with open(file_path, "r", encoding="utf-8",) as handle:
-        return json.load(handle)
 
 
 def serialize_animal(animal_obj):
@@ -89,24 +83,44 @@ def skin_type_print(animals_data, user_input):
     return skin_type_select
 
 
+def generate_error_page(file_path, animal_name, html_content):
+    error_html = f'<h2>The animal "{animal_name}" doesn\'t exist.</h2>'
+    update_animals_web(file_path, html_content, error_html)
+
+
+def generate_page(file_path, html_content, animal_data):
+    animal_info = get_animal_info(animal_data)
+    update_animals_web(file_path, html_content, animal_info )
+
+
 def main():
     """Load data, ask the user for a skin type, and generate the HTML page."""
-    html_content = load_html_template('animals_template.html')
-    animals_data = load_data('animals_data.json')
+    html_template = load_html_template('animals_template.html')
 
-    skin_type_list = skin_type_filter(animals_data)
+    animal_name = input('Type the animal name: ').title().strip()
+
+    json_animal_data = fetch_data(animal_name)
+    file_path = 'animals.html'
+
+    if not json_animal_data:
+        generate_error_page(file_path, animal_name, html_template)
+        print("no animal found, HTML page generated with error message.")
+        return
+
+    skin_type_list = skin_type_filter(json_animal_data)
     print(list(skin_type_list))
-    user_input = input('Type one of the skin type from the list or "all": ').title()
 
-    if user_input == 'All':
-        filtered_animal_info = get_animal_info(animals_data)
-        update_animals_web("animals.html", html_content,
-                           filtered_animal_info)
-    elif user_input in skin_type_list:
-        selected_animals = skin_type_print(animals_data, user_input)
-        filtered_animals_skin = get_animal_info(selected_animals)
-        update_animals_web("selected_animals.html",
-                           html_content, filtered_animals_skin)
+    skin_choice = input('Type one of the skin type from the list or "all": ').title()
+
+    if skin_choice == 'All':
+        generate_page(file_path, html_template, json_animal_data)
+        print("Website was successfully generated to the file animals.html.")
+
+    elif skin_choice in skin_type_list:
+        selected_animals = skin_type_print(json_animal_data, skin_choice)
+        generate_page(file_path, html_template, selected_animals)
+        print("Website was successfully generated to the file animals.html.")
+
     else:
         print('Typing was not correct, By by!')
 
